@@ -27,6 +27,12 @@ inductive validCtx : Ctx → Type
   | cons (n : Nat) (t : Typ) (c : Ctx) (p : notInCtx n t c) : validCtx (Ctx.cons n t c)
 
 namespace Ctx
+
+def ctxLength (c : Ctx) : Nat := by
+  cases c
+  case nil => exact 0
+  case cons n t c₁ => exact ctxLength c₁ + 1
+
 def printCtx (c : Ctx) : String := by
   cases c
   case nil => exact ""
@@ -44,8 +50,38 @@ example : validCtx ctx₁ := by
   apply notInCtx.cons 
   trivial
 
+inductive Term : Type
+  | var : Typ → Term
+  | abs : var → Term
+  | app : Term → Term → Term
 
+namespace Term
 
+def freshVarIndex (c : Ctx) : Nat := by
+  cases c
+  case nil => exact 1
+  case cons n t c₁ => exact freshVarIndex c₁ + 1
+def mergeCtxs (c₁ c₂ : Ctx) : Ctx := by
+  cases c₁
+  case nil => exact c₂ 
+  case cons n t c₃ => exact Ctx.cons n t (mergeCtxs c₃ c₂ )
+termination_by mergeCtxs c₁ c₂ => ctxLength c₁
+decreasing_by 
+  sorry
 
+def contextFromTerm (t : Term)  (c : Ctx ) :  Ctx := by
+  cases t
+  case var t₁ => exact Ctx.cons  (freshVarIndex c) t₁ Ctx.nil 
+  case abs v tt => exact c
+  case app t₁ t₂ => exact mergeCtxs (contextFromTerm t₁ Ctx.nil) (contextFromTerm t₂ Ctx.nil) 
+
+--def ctxFromTerm (counter : Nat ) (t : Term) : Ctx := by
+--  cases t
+--  case var ty => exact Ctx.cons counter + 1 ty Ctx.nil
+--  case abs v => exact 
+--  case app t₁ t₂  => sorry
+--
+
+end Term
 end Ctx
 end Typ
