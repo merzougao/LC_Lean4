@@ -1,3 +1,11 @@
+import Init.Data.Nat.Basic 
+
+--theorem natPos (n : Nat) (p : n ≠ 0) : n > 0 := by 
+--  cases n
+--  case zero => contradiction
+--  case succ n₂ => exact Nat.succ_add 
+
+
 -- We start by defining our basic type base and the arrow type --
 inductive Typ : Type
   | base : Typ
@@ -17,18 +25,17 @@ inductive Ctx : Type
   | cons  (n : Nat)  (t : Typ) (c : Ctx ) : Ctx 
 
 notation "[]" => Ctx.nil
-notation n "," t " ⟶ " c => Ctx.cons n t c
-notation "("n",,"t")" => n,t ⟶ []
+notation n ",," t " ⟶ " c => Ctx.cons n t c
 
 -- A type that is inhabited whenever a variable is not present in a context --
 inductive notInCtx (n : Nat) (t : Typ) : Ctx → Type 
   | nil : notInCtx n t []
-  | cons (n₁ : Nat) (t₁ : Typ) (p₁ : Ctx) (p : n ≠ n₁) : notInCtx n t (n₁,t₁ ⟶ p₁)
+  | cons (n₁ : Nat) (t₁ : Typ) (p₁ : Ctx) (p : n ≠ n₁) : notInCtx n t (n₁,,t₁ ⟶ p₁)
 
 -- A type that is inhabited whenever a context is valid, i.e does not contain duplicates --
 inductive validCtx : Ctx → Type
   | nil : validCtx []
-  | cons (n : Nat) (t : Typ) (c : Ctx) (p : notInCtx n t c) : validCtx (n,t ⟶ c)
+  | cons (n : Nat) (t : Typ) (c : Ctx) (p : notInCtx n t c) : validCtx (n,,t ⟶ c)
 
 namespace Ctx
 
@@ -37,6 +44,24 @@ def ctxLength (c : Ctx) : Nat := by
   case nil => exact 0
   case cons n t c₁ => exact ctxLength c₁ + 1
 
+def mergeCtx (c₁ c₂ : Ctx )  : Ctx := by
+  cases c₁ 
+  case nil => exact c₂ 
+  case cons n t c₃ => exact n,,t ⟶ (mergeCtx c₃ c₂)
+termination_by mergeCtx c₁ c₂ => ctxLength c₁ 
+decreasing_by 
+  simp_wf 
+  cases c
+  case nil => simp [ctxLength]
+  case cons n₂ t₂ c₂ _ => 
+    have h : (ctxLength (n,,t ⟶ n₂ ,, t₂ ⟶ c₂)) = (ctxLength (n₂,,t₂ ⟶ c₂ ) + 1) := by rfl
+    rw [h]
+    rw [Nat.add_one]
+    apply Nat.lt_succ_of_le
+    simp
+    
+    
+    
 def printCtx (c : Ctx) : String := by
   cases c
   case nil => exact ""
@@ -53,7 +78,7 @@ example : validCtx ctx₁ := by
   apply validCtx.cons 
   apply notInCtx.cons 
   trivial
-
+  
 inductive Term : Type
   | var : Nat → Typ → Term
   | abs (t : Typ ) : Term → Term
@@ -61,16 +86,14 @@ inductive Term : Type
 
 namespace Term
 
-def mergeCtx : Ctx → Ctx → Ctx := sorry
-
 inductive Deduction : Ctx →  Term →  Typ →  Type
-  | var (n : Nat) (t : Typ) : Deduction (n,,t) (Term.var n t) t
-  | abs {c : Ctx} {t : Term} {ty xt : Typ} {n : Nat} (d : Deduction (n,xt ⟶ c) t ty) : Deduction c (Term.abs xt t) (Typ.arrow xt ty)
+  | var (n : Nat) (t : Typ) : Deduction (n,,t ⟶ []) (Term.var n t) t
+  | abs {c : Ctx} {t : Term} {ty xt : Typ} {n : Nat} (d : Deduction (n,,xt ⟶ c) t ty) : Deduction c (Term.abs xt t) (Typ.arrow xt ty)
   | app {c₁ c₂ : Ctx} { t₁ t₂ : Term} {A B : Typ} (d₁ : Deduction c₁ t₁ (Typ.arrow A B)) (d₂ : Deduction c₂ t₂ A) : Deduction (mergeCtx c₁ c₂) (Term.app t₁ t₂) B
   
 notation Γ " ⊢ " t " : " ty => Deduction Γ t ty
 
-theorem ProofId : (0,,base) ⊢ (Term.var 0 base) : base := Deduction.var 0 base
+theorem ProofId : (0,,base ⟶ []) ⊢ (Term.var 0 base) : base := Deduction.var 0 base
   
   
 
