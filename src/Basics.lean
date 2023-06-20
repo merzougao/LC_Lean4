@@ -16,15 +16,19 @@ inductive Ctx : Type
   | nil   : Ctx
   | cons  (n : Nat)  (t : Typ) (c : Ctx ) : Ctx 
 
+notation "[]" => Ctx.nil
+notation n "," t " ⟶ " c => Ctx.cons n t c
+notation "("n",,"t")" => n,t ⟶ []
+
 -- A type that is inhabited whenever a variable is not present in a context --
 inductive notInCtx (n : Nat) (t : Typ) : Ctx → Type 
-  | nil : notInCtx n t Ctx.nil
-  | cons (n₁ : Nat) (t₁ : Typ) (p₁ : Ctx) (p : n ≠ n₁) : notInCtx n t (Ctx.cons n₁ t₁ p₁)
+  | nil : notInCtx n t []
+  | cons (n₁ : Nat) (t₁ : Typ) (p₁ : Ctx) (p : n ≠ n₁) : notInCtx n t (n₁,t₁ ⟶ p₁)
 
 -- A type that is inhabited whenever a context is valid, i.e does not contain duplicates --
 inductive validCtx : Ctx → Type
-  | nil : validCtx nil
-  | cons (n : Nat) (t : Typ) (c : Ctx) (p : notInCtx n t c) : validCtx (Ctx.cons n t c)
+  | nil : validCtx []
+  | cons (n : Nat) (t : Typ) (c : Ctx) (p : notInCtx n t c) : validCtx (n,t ⟶ c)
 
 namespace Ctx
 
@@ -51,36 +55,24 @@ example : validCtx ctx₁ := by
   trivial
 
 inductive Term : Type
-  | var : Typ → Term
-  | abs : var → Term
+  | var : Nat → Typ → Term
+  | abs (t : Typ ) : Term → Term
   | app : Term → Term → Term
 
 namespace Term
 
-def freshVarIndex (c : Ctx) : Nat := by
-  cases c
-  case nil => exact 1
-  case cons n t c₁ => exact freshVarIndex c₁ + 1
-def mergeCtxs (c₁ c₂ : Ctx) : Ctx := by
-  cases c₁
-  case nil => exact c₂ 
-  case cons n t c₃ => exact Ctx.cons n t (mergeCtxs c₃ c₂ )
-termination_by mergeCtxs c₁ c₂ => ctxLength c₁
-decreasing_by 
-  sorry
+def mergeCtx : Ctx → Ctx → Ctx := sorry
 
-def contextFromTerm (t : Term)  (c : Ctx ) :  Ctx := by
-  cases t
-  case var t₁ => exact Ctx.cons  (freshVarIndex c) t₁ Ctx.nil 
-  case abs v tt => exact c
-  case app t₁ t₂ => exact mergeCtxs (contextFromTerm t₁ Ctx.nil) (contextFromTerm t₂ Ctx.nil) 
+inductive Deduction : Ctx →  Term →  Typ →  Type
+  | var (n : Nat) (t : Typ) : Deduction (n,,t) (Term.var n t) t
+  | abs {c : Ctx} {t : Term} {ty xt : Typ} {n : Nat} (d : Deduction (n,xt ⟶ c) t ty) : Deduction c (Term.abs xt t) (Typ.arrow xt ty)
+  | app {c₁ c₂ : Ctx} { t₁ t₂ : Term} {A B : Typ} (d₁ : Deduction c₁ t₁ (Typ.arrow A B)) (d₂ : Deduction c₂ t₂ A) : Deduction (mergeCtx c₁ c₂) (Term.app t₁ t₂) B
+  
+notation Γ " ⊢ " t " : " ty => Deduction Γ t ty
 
---def ctxFromTerm (counter : Nat ) (t : Term) : Ctx := by
---  cases t
---  case var ty => exact Ctx.cons counter + 1 ty Ctx.nil
---  case abs v => exact 
---  case app t₁ t₂  => sorry
---
+theorem ProofId : (0,,base) ⊢ (Term.var 0 base) : base := Deduction.var 0 base
+  
+  
 
 end Term
 end Ctx
