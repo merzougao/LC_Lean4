@@ -81,16 +81,41 @@ example : validCtx ctx₁ := by
   
 inductive Term : Type
   | var : Nat → Typ → Term
-  | abs (t : Typ ) : Term → Term
+  | abs : Nat → Typ →  Term → Term
   | app : Term → Term → Term
+
+def printTerm (t: Term) : String := by
+  cases t
+  case var n t₁ => exact "x"++(toString n)
+  case abs  n ty t₁ => exact "λ (x" ++ toString n ++ ":" ++ (printTyp ty) ++")."++ printTerm t₁ 
+  case app t₁ t₂ => exact "("++ printTerm t₁ ++ ")("++ printTerm t₂ ++ ")"
 
 namespace Term
 
+def substitute (n : Nat) (t u : Term) : Term := by
+  cases t
+  case var n₁ t₁ => exact u
+  case abs n₁ ty t₁ => exact if n = n₁ then Term.abs n₁ ty t₁  else Term.abs n₁ ty (substitute n t₁ u)
+  case app t₁ t₂ => exact Term.app (substitute n t₁ u) (substitute n t₁ u)
+
+notation t "[" x "//" u "]" => substitute x t u
+
+def t : Term := Term.var 0 base
+def u : Term := Term.var 1 base
+def t₁ : Term := Term.abs 0 base (Term.var 0 base)
+
+#eval printTerm t
+#eval printTerm u
+#eval printTerm (t [0//u])
+#eval printTerm t₁ 
+#eval printTerm (t₁ [0//u])
+
 inductive Deduction : Ctx →  Term →  Typ →  Type
   | var (n : Nat) (t : Typ) : Deduction (n,,t ⟶ []) (Term.var n t) t
-  | abs {c : Ctx} {t : Term} {ty xt : Typ} {n : Nat} (d : Deduction (n,,xt ⟶ c) t ty) : Deduction c (Term.abs xt t) (Typ.arrow xt ty)
+  | abs {c : Ctx} {t : Term} {ty xt : Typ} {n : Nat} (d : Deduction (n,,xt ⟶ c) t ty) : Deduction c (Term.abs n xt t) (Typ.arrow xt ty)
   | app {c₁ c₂ : Ctx} { t₁ t₂ : Term} {A B : Typ} (d₁ : Deduction c₁ t₁ (Typ.arrow A B)) (d₂ : Deduction c₂ t₂ A) : Deduction (mergeCtx c₁ c₂) (Term.app t₁ t₂) B
-  
+  | subst (d₁ : Deduction (n₁,,ty₁ ⟶ c₁) t ty) (d₂ : Deduction c₂ t₂ ty₁) : Deduction (mergeCtx c₁ c₂) (substitute n₁ t₂ t) ty
+
 notation Γ " ⊢ " t " : " ty => Deduction Γ t ty
 
 theorem ProofId : (0,,base ⟶ []) ⊢ (Term.var 0 base) : base := Deduction.var 0 base
