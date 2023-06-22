@@ -117,7 +117,8 @@ def t₁ : Term := Term.abs 0 base (Term.var 0 base)
 #eval printTerm (t₁ [0//u])
 
 inductive Deduction : Ctx →  Term →  Typ →  Type
-  | var (c : Ctx) (n : Nat) (t : Typ) : Deduction (n,,t ⟶ c) ($n:t) t
+  | var (n : Nat) (t : Typ) : Deduction (n,,t ⟶ []) ($n:t) t
+  | weak (n : Nat) (A B : Typ) (t : Term) (Γ : Ctx) : Deduction (n,,A ⟶ Γ) t B 
   | comm (Γ c₁ c₂ c : Ctx) (bn₁ bn₂ A : Typ) :
         mergeCtx Γ (n₁,,Bn₁ ⟶ n₂,,Bn₂ ⟶ c) c₁ 
       → Deduction c₁ t A
@@ -125,18 +126,18 @@ inductive Deduction : Ctx →  Term →  Typ →  Type
       → Deduction c₂ t A
   | abs (c : Ctx) (t : Term) (ty xt : Typ) (n : Nat) : 
         Deduction (n,,xt ⟶ c) t ty 
-      → Deduction c (Term.abs n xt t) (Typ.arrow xt ty)
+      → Deduction c (λ (xn:xt).t) (xt -> ty)
   | app (c₁ c₂ c₃ : Ctx) ( t₁ t₂ : Term) (A B : Typ) : 
-        Deduction c₁ t₁ (Typ.arrow A B) 
+        Deduction c₁ t₁ (A -> B) 
       → Deduction c₂ t₂ A 
       → mergeCtx c₁ c₂ c₃
-      → Deduction c₃ (Term.app t₁ t₂) B
-  | subst (c₁ c₂ c₃ : Ctx) (n₁ : Nat) (ty₁ ty : Typ) (t t₂ : Term) :
-        Deduction (n₁,,ty₁ ⟶ c₁) t ty 
-      → Deduction c₂ t₂ ty₁
-      → mergeCtx c₁ c₂ c₃  
-      → Deduction c₃ (t [n₁ // t₂]) ty
-
+      → Deduction c₃ (t₁ @ t₂) B
+--  | subst (c₁ c₂ c₃ : Ctx) (n₁ : Nat) (ty₁ ty : Typ) (t t₂ : Term) :
+--        Deduction (n₁,,ty₁ ⟶ c₁) t ty 
+--      → Deduction c₂ t₂ ty₁
+--      → mergeCtx c₁ c₂ c₃  
+--      → Deduction c₃ (t [n₁ // t₂]) ty
+--
 notation Γ " ⊢ " t " : " ty => Deduction Γ t ty
 
 theorem ProofId : (0,,base ⟶ []) ⊢ ($0:base) : base := Deduction.var [] 0 base
@@ -144,17 +145,51 @@ theorem ProofId : (0,,base ⟶ []) ⊢ ($0:base) : base := Deduction.var [] 0 ba
 inductive red : Term → Term → Type
   | β (n: Nat) (ty : Typ) (t u : Term) : red ((λ (xn:ty).t)@u) (t[n // u])
 
-theorem commutativityOfCtx
-  Γ₁ 
-theorem weakeningOfCtx {A B: Typ} {t : Term} {Γ : Ctx} {n : Nat} : (Γ ⊢ t:A) →  (n,,B ⟶ Γ) ⊢ t:A := by
-  intro d
-  induction d 
-  case var ct nt tt => sorry
-  case comm c₀ c₁ c₂ c bn₁ bn₂ A m₁ d₁ m₂ h₁ h₂ h₃ h₄ h₅ => sorry
-  case abs ct tt A₁ A₂  n₁ d₁ h => sorry
-  case app Γ₁ Γ₂ Γ₃ t₁ t₂  A₁ A₂ d₁ d₂ m h₁ h₂ => sorry
-  case subst Γ₁ Γ₂ Γ₃ t₁ t₂  A₁ A₂ d₁ d₂ m h₁ h₂ => sorry
+theorem arrowNotEq (A B : Typ) : (A -> B) ≠ A := by
+  intros h 
+  induction A 
+  case base => 
+    induction B 
+    case base => trivial
+    case arrow B₁ B₂ h p =>  
+  
 
+theorem typeApp {Γ : Ctx} {t₁ t₂ : Term} {A B : Typ} : (Γ ⊢ t₁ : A -> B) → (Γ ⊢ t₁ @ t₂ : B) → (Γ ⊢ t₂ : A) := by
+  intros d₁ d₂ 
+  cases d₁ 
+  case var n => 
+    induction t₂
+    case var n₁ C =>  
+      have : C = A := by sorry
+      rw [this]
+      have : n = n₁ := by sorry
+      rw [this]
+      have : (A -> B) = A := by sorry
+      
+
+
+    case abs h p q => sorry
+    case app h p => sorry
+
+  case weak => sorry
+  case comm => sorry
+  case abs => sorry
+  case app => sorry
+
+
+--theorem βRedPreservesType (Γ : Ctx) (A : Typ) (t₁ t₂ : Term) : red t₁ t₂ → (Γ ⊢ t₁ : A) → (Γ ⊢ t₂ : A ):= by 
+--  intros r d₁ 
+--  induction t₁ 
+--  case var n An => contradiction
+--  case abs n An t₃ h => contradiction
+--  case app t₃ t₄ h p => 
+--    induction t₃ 
+--    case var => contradiction
+--    case abs n₁ an₁ t₅ h₁ => 
+--      apply p 
+--      . 
+--      
+--    case app => contradiction
 end Term
 end Ctx
 end Typ
