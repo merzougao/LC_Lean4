@@ -46,23 +46,6 @@ def ctxLength (c : Ctx) : Nat := by
   case nil => exact 0
   case cons n t c₁ => exact ctxLength c₁ + 1
 
-
---def mergeCtx (c₁ c₂ : Ctx )  : Ctx := by
---  cases c₁ 
---  case nil => exact c₂ 
---  case cons n t c₃ => exact n,,t ⟶ (mergeCtx c₃ c₂)
---termination_by mergeCtx c₁ c₂ => ctxLength c₁ 
---decreasing_by 
---  simp_wf 
---  cases c
---  case nil => simp [ctxLength]
---  case cons n₂ t₂ c₂ _ => 
---    have h : (ctxLength (n,,t ⟶ n₂ ,, t₂ ⟶ c₂)) = (ctxLength (n₂,,t₂ ⟶ c₂ ) + 1) := by rfl
---    rw [h]
---    rw [Nat.add_one]
---    apply Nat.lt_succ_of_le
---    simp
-    
 inductive mergeCtx : Ctx → Ctx → Ctx → Type 
   | nil_nil : mergeCtx [] [] []
   | nill (c : Ctx) : mergeCtx [] c c
@@ -134,7 +117,12 @@ def t₁ : Term := Term.abs 0 base (Term.var 0 base)
 #eval printTerm (t₁ [0//u])
 
 inductive Deduction : Ctx →  Term →  Typ →  Type
-  | var (n : Nat) (t : Typ) : Deduction (n,,t ⟶ []) (Term.var n t) t
+  | var (c : Ctx) (n : Nat) (t : Typ) : Deduction (n,,t ⟶ c) ($n:t) t
+  | comm (Γ c₁ c₂ c : Ctx) (bn₁ bn₂ A : Typ) :
+        mergeCtx Γ (n₁,,Bn₁ ⟶ n₂,,Bn₂ ⟶ c) c₁ 
+      → Deduction c₁ t A
+      → mergeCtx Γ (n₂,,Bn₂ ⟶ n₁,,Bn₁ ⟶ c) c₂
+      → Deduction c₂ t A
   | abs (c : Ctx) (t : Term) (ty xt : Typ) (n : Nat) : 
         Deduction (n,,xt ⟶ c) t ty 
       → Deduction c (Term.abs n xt t) (Typ.arrow xt ty)
@@ -151,15 +139,22 @@ inductive Deduction : Ctx →  Term →  Typ →  Type
 
 notation Γ " ⊢ " t " : " ty => Deduction Γ t ty
 
-theorem ProofId : (0,,base ⟶ []) ⊢ ($0:base) : base := Deduction.var 0 base
+theorem ProofId : (0,,base ⟶ []) ⊢ ($0:base) : base := Deduction.var [] 0 base
 
 inductive red : Term → Term → Type
   | β (n: Nat) (ty : Typ) (t u : Term) : red ((λ (xn:ty).t)@u) (t[n // u])
 
--- Beta reduction preserves types --
-theorem βTypePreservation {Γ₁ : Ctx} {tt : Typ} {t₁ t₂ : Term} 
-                          (b : red t₁ t₂ ) (d₁ : Γ₁ ⊢ t₁ :tt) : (Γ₁ ⊢ t₂ : tt) := by
-  sorry
+theorem commutativityOfCtx
+  Γ₁ 
+theorem weakeningOfCtx {A B: Typ} {t : Term} {Γ : Ctx} {n : Nat} : (Γ ⊢ t:A) →  (n,,B ⟶ Γ) ⊢ t:A := by
+  intro d
+  induction d 
+  case var ct nt tt => sorry
+  case comm c₀ c₁ c₂ c bn₁ bn₂ A m₁ d₁ m₂ h₁ h₂ h₃ h₄ h₅ => sorry
+  case abs ct tt A₁ A₂  n₁ d₁ h => sorry
+  case app Γ₁ Γ₂ Γ₃ t₁ t₂  A₁ A₂ d₁ d₂ m h₁ h₂ => sorry
+  case subst Γ₁ Γ₂ Γ₃ t₁ t₂  A₁ A₂ d₁ d₂ m h₁ h₂ => sorry
+
 end Term
 end Ctx
 end Typ
