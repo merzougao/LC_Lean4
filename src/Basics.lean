@@ -1,11 +1,5 @@
 import Init.Data.Nat.Basic 
 
---theorem natPos (n : Nat) (p : n ≠ 0) : n > 0 := by 
---  cases n
---  case zero => contradiction
---  case succ n₂ => exact Nat.succ_add 
-
-
 -- We start by defining our basic type base and the arrow type --
 inductive Typ : Type
   | base : Typ
@@ -147,12 +141,10 @@ inductive red : Term → Term → Type
 
 theorem arrowNotEq (A B : Typ) : (A -> B) ≠ A := by
   intros h 
-  induction A 
-  case base => 
-    induction B 
-    case base => trivial
-    case arrow B₁ B₂ h p =>  
-  
+  induction B
+  case base => trivial
+  case arrow a b c D E h₁ h₂  =>
+    
 
 theorem typeApp {Γ : Ctx} {t₁ t₂ : Term} {A B : Typ} : (Γ ⊢ t₁ : A -> B) → (Γ ⊢ t₁ @ t₂ : B) → (Γ ⊢ t₂ : A) := by
   intros d₁ d₂ 
