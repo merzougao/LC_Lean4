@@ -35,8 +35,8 @@ namespace Ctx
 #check 4:base ⊹ 3:base ⊹ []
 
 inductive inCtx : Nat → Ctx → Type 
-| init : inCtx n (n:A ⊹ Γ) 
-| cons : inCtx n Γ → inCtx n (n₁:A ⊹ Γ)
+| init (Γ : Ctx) (n : Nat) (A : Typ) : inCtx n (n:A ⊹ Γ) 
+| cons (Γ : Ctx) (n n₁ : Nat) (A : Typ) : inCtx n Γ → inCtx n (n₁:A ⊹ Γ)
 
 notation n"ε"Γ => inCtx n Γ
 notation n"¬ε"Γ => inCtx n Γ → false
@@ -83,6 +83,36 @@ notation Γ " ⊢ " t " ∶ " A => Deduction Γ t A
 namespace Deduction
 
 
+theorem invAbs {n : Nat} {Γ : Ctx} {A B : Typ} {t : Term}: (Γ ⊢ λ(x).t ∶ A->B) → (Γ ⊢ $ x ∶ A) := by 
+    sorry
+
+-- If a weakest context is valid, then a strongest one remains valid --
+theorem weakValidCtx (Γ : Ctx) (n₁ : Nat) (A₁ : Typ) : validCtx (n₁:A₁ ⊹ Γ) → validCtx Γ  := by 
+  intro d 
+  cases d 
+  case cons A₂ h₁ => assumption
+
+-- Contexts remain valid if we commute their variables ( this should not provable in dependent type theory ! ) --
+theorem commValidCtx {Γ : Ctx} {n₁ n₂ : Nat} {A₁ A₂ : Typ} : validCtx (n₁:A₁ ⊹ n₂:A₂ ⊹ Γ ) → validCtx (n₂:A₂ ⊹ n₁:A₁ ⊹ Γ ) := by
+  intro d 
+  apply validCtx.cons 
+  . intro d₁ 
+    cases d 
+    case a h₁ h₂ => 
+      apply h₂ 
+      apply inCtx.cons 
+      cases h₁ 
+      case a.cons h₃ h₄ => 
+        cases d₁ 
+        case init => have that : false = true := h₂ (inCtx.init Γ n₁ A₂) ;contradiction
+        case cons h₅ => have that : false = true := h₄ h₅ ; contradiction
+  . apply validCtx.cons 
+    intro d₁ 
+    cases d 
+    case a.a.cons h₁ h₂ => 
+      apply h₂;apply inCtx.cons;assumption
+    case a.a => exact weakValidCtx Γ n₂ A₂ (weakValidCtx (n₂:A₂ ⊹ Γ) n₁ A₁ d)
+    
 -- Prove the soundness of context when a judgment of the form Γ ⊢ x : A is made and x is avariable --
 -- i.e, whenever the judgement is present, the context Γ has to be valid --
 theorem ctxSoundnessVar {n : Nat} {Γ : Ctx} {A : Typ} {t : Term} : (t = $ n ) → (Γ ⊢ t ∶ A) → validCtx Γ := by 
@@ -114,16 +144,23 @@ theorem ctxSoundnessVar {n : Nat} {Γ : Ctx} {A : Typ} {t : Term} : (t = $ n ) �
       . cases h₃ d₁
         case a.a.cons h₅ h₆ => cases h₅ ; case cons h₇ h₈ => assumption 
   case abs t₁ n₁ Γ₁ _ _ _ _ _ _  => contradiction
-  case app _ _ _ Γ₁ t₁ t₂ _ _ _ _ => contradiction
+  case app Γ₁ t₁ t₂ _ _ _ _ => contradiction
  
 -- Prove the soundness of context when a judgment of the form Γ ⊢ t : A is made --
 -- i.e, whenever the judgement is present, the context Γ has to be valid --
 theorem ctxSoundness : (Γ ⊢ t ∶ A) → validCtx Γ := by 
   intro d 
-  induction t 
-  case var n => exact ctxSoundnessVar rfl d
-  case abs => sorry
-  case app => sorry
+  induction d 
+  case var n A₁ => 
+    apply validCtx.cons 
+    . intro d₁;contradiction 
+    . exact validCtx.nil
+  case weak => apply validCtx.cons <;> assumption
+  case comm h₃ => exact commValidCtx h₃
+  case abs h₄ => exact h₄ 
+  case app h₃ => exact h₃ 
+    
+
 theorem ctxNotNilInDeduction {t : Term} {A : Typ} : ([] ⊢ t ∶ A) → False := by 
   induction t
   case var n => 
@@ -135,22 +172,6 @@ theorem ctxNotNilInDeduction {t : Term} {A : Typ} : ([] ⊢ t ∶ A) → False :
 
 theorem noDuplicatesInCtx {n : Nat} {A : Typ} {Γ : Ctx} : validCtx (n:A ⊹ Γ) → n ¬ε Γ := by sorry 
 
-theorem invAbs {n : Nat} {Γ : Ctx} {A B : Typ} {t : Term}: (Γ ⊢ λ(x).t ∶ A->B) → (Γ ⊢ $ x ∶ A) := by 
-  intro h 
-  induction Γ 
-  case nil => 
-    have : False := by exact ctxNotNilInDeduction h  
-    contradiction
-  case cons n A₁ Γ₁ iH => 
-    induction Γ₁  
-    case nil => 
-      cases h 
-      case weak n₁ h₁ h₂ =>
-        have : False := by exact ctxNotNilInDeduction h₂ 
-        contradiction
-      case abs => sorry
-    case cons n₁ n₂ A₂ Γ₂ hh => sorry
-    
 
 
 
