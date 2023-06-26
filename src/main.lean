@@ -82,10 +82,54 @@ inductive Deduction : Ctx → Term → Typ → Type
 notation Γ " ⊢ " t " ∶ " A => Deduction Γ t A 
 namespace Deduction
 
+theorem ctxSoundnessVar {n : Nat} {Γ : Ctx} {A : Typ} : (Γ ⊢ $ n ∶ A) → validCtx Γ := by 
+  intro d 
+  induction d 
+  cases d 
+  case var =>
+    apply validCtx.cons 
+    . intro d₁ 
+      contradiction 
+    . exact validCtx.nil 
+  case weak B n₁ Γ₁ h₁ h₂ => 
+    apply validCtx.cons 
+    . assumption 
+    . sorry 
+  case comm Γ₁ n₁ n₂ A₁ A₂ h => 
+    apply validCtx.cons 
+    . intro d₁ 
+      
+      
+
+
+
+
 theorem ctxSoundness : (Γ ⊢ t ∶ A) → validCtx Γ := by 
-  sorry
+  intro d 
+  induction t 
+  case var n => 
+    induction Γ 
+    case nil => exact validCtx.nil
+    case cons  n₁ A₁ Γ₁ h => 
+      apply validCtx.cons 
+      . intro d₁ 
+        cases d 
+        case a.var => contradiction
+        case a.weak  h₁ h₂  => exact h₁ d₁ 
+        case a.comm  Γ₀  n₂ A₂  h₁   => 
+          have : (n₁:A₁ ⊹ n₂ :A₂ ⊹ Γ₀) ⊢ $ n ∶ A := by sorry
+          sorry   
+      . sorry
+  case abs => sorry
+  case app => sorry
 theorem ctxNotNilInDeduction {t : Term} {A : Typ} : ([] ⊢ t ∶ A) → False := by 
-  sorry
+  induction t
+  case var n => 
+    intro d 
+    contradiction
+  case abs n t₁ h => 
+    intro d 
+  case app => sorry
 
 theorem noDuplicatesInCtx {n : Nat} {A : Typ} {Γ : Ctx} : validCtx (n:A ⊹ Γ) → n ¬ε Γ := by sorry 
 
@@ -96,13 +140,15 @@ theorem invAbs {n : Nat} {Γ : Ctx} {A B : Typ} {t : Term}: (Γ ⊢ λ(x).t ∶ 
     have : False := by exact ctxNotNilInDeduction h  
     contradiction
   case cons n A₁ Γ₁ iH => 
-    have : (Γ₁) ⊢ λ(x).t ∶ A->B := by sorry
-    apply Deduction.weak 
-    . intro d 
-      have this2 : validCtx (n:A₁ ⊹ Γ₁) := ctxSoundness h 
-      have this3 : n ¬ε Γ₁  := noDuplicatesInCtx this2 
-      apply this3 
-      exact d
+    induction Γ₁  
+    case nil => 
+      cases h 
+      case weak n₁ h₁ h₂ =>
+        have : False := by exact ctxNotNilInDeduction h₂ 
+        contradiction
+      case abs => sorry
+    case cons n₁ n₂ A₂ Γ₂ hh => sorry
+    
 
 
 
