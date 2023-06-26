@@ -94,10 +94,6 @@ inductive Deduction : Ctx → Term → Typ → Type
 notation Γ " ⊢ " t " ∶ " A => Deduction Γ t A 
 namespace Deduction
 
-
-theorem invAbs {n : Nat} {Γ : Ctx} {A B : Typ} {t : Term}: (Γ ⊢ λ(x).t ∶ A->B) → (Γ ⊢ $ x ∶ A) := by 
-    sorry
-
 -- If a weakest context is valid, then a strongest one remains valid --
 theorem weakValidCtx (Γ : Ctx) (n₁ : Nat) (A₁ : Typ) : validCtx (n₁:A₁ , Γ) → validCtx Γ  := by 
   intro d 
@@ -172,78 +168,6 @@ theorem ctxSoundness : (Γ ⊢ t ∶ A) → validCtx Γ := by
   case abs h₄ => exact h₄ 
   case app h₃ => exact h₃ 
     
-
-theorem ctxNotNilInDeduction {t : Term} {A : Typ} : ([] ⊢ t ∶ A) → False := by 
-  induction t
-  case var n => 
-    intro d 
-    contradiction
-  case abs n t₁ h => 
-    intro d 
-  case app => sorry
-
-theorem noDuplicatesInCtx {n : Nat} {A : Typ} {Γ : Ctx} : validCtx (n:A , Γ) → n ¬ε Γ := by sorry 
-
-
-
-
-theorem uniqVar {n n' : Nat} {A : Typ} : ((n:A , []) ⊢ ($ n') ∶ A) → n = n' := by 
-  intro d  
-  cases d 
-  case var => rfl
-  case weak h d₁ => contradiction 
-    
-
-theorem uniqVarInCtx {n n' : Nat} {Γ : Ctx} {t : Term} {A A' B : Typ} : ((n:A , n':A' , Γ) ⊢ t ∶ B) → n ≠ n' := by 
-  intro h 
-  induction t 
-  case var n₁ => 
-    cases h 
-    case weak h' h'' => 
-      intro h₁ 
-      apply h'
-      rw [h₁]
-      apply inCtx.init
-    case comm h' => 
-      intro h₁ 
-      have : validCtx (n':A' , n:A , Γ ) := by exact ctxSoundness h' 
-      rw [h₁] at this 
-      cases this 
-      case cons hh hhh=> 
-        apply hhh 
-        apply inCtx.init 
-  case abs n'' t' hh => 
-    apply hh 
-    
-
-  case app => sorry
-
-
-
-example (n₁ n₂ n₃ n₄ : Nat) (A₁ A₂ A₃ A₄ B: Typ) (t : Term) : 
-  ((n₁:A₁  , n₂:A₂ , n₃:A₃  , n₄:A₄  , []) ⊢ t ∶ B) 
-  → (n₁:A₁  , n₃:A₃  , n₂:A₂  , n₄:A₄  , []) ⊢ t ∶ B := by 
-  intro d
-  cases t 
-  case var n' => 
-    apply Deduction.weak 
-    case a => 
-      intro d₁ 
-      sorry 
-    case a => sorry
-  case abs => sorry
-  case app => sorry
-
-
-theorem uniqTypForVar (n : Nat) (A B : Typ ) : ((n:A , []) ⊢ ($ n) ∶ B)→ A = B := by 
-  intros d₂
-  cases d₂ 
-  case var => rfl
-  case weak h d₁ => contradiction
-  
-variable (A B : Typ)
-#check Deduction.var 0 (A->B->A)
-
 --Any term can be constructed no matter the type if we allow free context --
 example {A B : Typ} : Σ Γ : Ctx , Σ t : Term , (Γ ⊢ t ∶ A->B->A) := by
   let Γ := (0:A->B->A , [])
@@ -253,15 +177,13 @@ example {A B : Typ} : Σ Γ : Ctx , Σ t : Term , (Γ ⊢ t ∶ A->B->A) := by
 
 -- The story change if we only allow a restricted context, here we need a more intense derivation --
 
-#check 0:base->base , 1:base , []
-
 example {A B : Typ} : Σ t : Term , ((0:A->B , 1:A , []) ⊢ t ∶ A->B->A) := by
-  constructor
-  case fst => exact λ(1).($0)($1)
+  constructor 
+  case fst => exact λ(1).$0
   case snd => 
-    apply Deduction.abs
-    . apply Deduction.weak 
-      
+    apply Deduction.comm 
+    apply Deduction.abs 
+
 
 
 
