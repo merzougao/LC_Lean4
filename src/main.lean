@@ -85,6 +85,10 @@ inductive Deduction : Ctx → Term → Typ → Type
         : Deduction (n:A , Γ) ($ n) A 
         → Deduction Γ t B 
         → Deduction Γ (λ(n).t) (A->B)
+
+--  Γ ⊢ t₁ : A->B     Γ ⊢ t₂ : A
+    ----------------------------
+--          Γ ⊢ t₁ t₂ : B
 | app (n : Nat) (Γ : Ctx) (t₁ t₂ : Term)
         : Deduction Γ t₁ (A->B) 
         → Deduction Γ t₂ A 
@@ -176,15 +180,20 @@ example {A B : Typ} : Σ Γ : Ctx , Σ t : Term , (Γ ⊢ t ∶ A->B->A) := by
   exact ⟨ Γ , ⟨ t , p⟩ ⟩ 
 
 -- The story change if we only allow a restricted context, here we need a more intense derivation --
-
-example {A B : Typ} : Σ t : Term , ((0:A->B , 1:A , []) ⊢ t ∶ A->B->A) := by
+example {A B : Typ} : Σ t : Term , ((0:B->A , 1:A , []) ⊢ t ∶ A->B->A) := by
   constructor 
   case fst => exact λ(1).$0
   case snd => 
     apply Deduction.comm 
-    apply Deduction.abs 
-
-
+    apply Deduction.weak 
+    . intro d ; contradiction
+    . apply Deduction.abs 
+      . apply Deduction.comm 
+        apply Deduction.weak 
+        . intro d₁ 
+          contradiction 
+        . apply Deduction.var
+      . apply Deduction.var
 
 
 
