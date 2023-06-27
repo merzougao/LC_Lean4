@@ -46,13 +46,15 @@ inductive validCtx : Ctx → Type
 | cons (n : Nat) (A : Typ) (Γ : Ctx) : (n ¬ε Γ) → validCtx Γ → validCtx (n:A , Γ)
 
 inductive Term : Type
-| var : Nat → Term
-| abs : Nat → Term → Term 
-| app : Term → Term → Term
+| var : Nat → Term                  -- variable
+| abs : Nat → Term → Term           -- lambda abstraction
+| app : Term → Term → Term          -- application
+| subst : Nat → Term → Term → Term  -- variable substitution
 
 notation "$"n  => Term.var n
 notation "λ("n")."t => Term.abs n t
 notation "("t₁")("t₂")" => Term.app t₁ t₂ 
+notation "["x"//"u"]"t => Term.subst x u t
 
 namespace Term
 #check $5 
@@ -93,6 +95,14 @@ inductive Deduction : Ctx → Term → Typ → Type
         : Deduction Γ t₁ (A->B) 
         → Deduction Γ t₂ A 
         → Deduction Γ ((t₁)(t₂)) B
+
+--  n, Γ ⊢ t : B      Γ ⊢ u : A
+    ---------------------------
+--        Γ ⊢ [n // u]t : B 
+| subst (n : Nat) (Γ : Ctx) (t u : Term) (A B : Typ)
+        : Deduction (n:A,Γ) t B
+        → Deduction Γ u A
+        → Deduction Γ ([n // u]t) B
 
 -- WARNING, This is "\:" not just ":" --
 notation Γ " ⊢ " t " ∶ " A => Deduction Γ t A 
@@ -195,7 +205,70 @@ example {A B : Typ} : Σ t : Term , ((0:B->A , 1:A , []) ⊢ t ∶ A->B->A) := b
         . apply Deduction.var
       . apply Deduction.var
 
+-- We can define a well formed term predicate now --
+def wellFormedTerm (t : Term) : Type := (Σ Γ : Ctx, Σ A : Typ, (Γ ⊢ t ∶ A))
+
+-- Let us see an example. Here we prove that λ x₀.x₁ is well formed by exhibiting the variables x₀ , x₁ of type base and lambda abstracting. The procedure to prove that a term is well formed forces us to make a choice of types for the variables --
+def p₁ : wellFormedTerm  (λ(0).($1)) := by 
+  constructor 
+  case fst => exact 1:base , []
+  case snd => 
+    constructor
+    case fst => exact base->base 
+    case snd => 
+      apply Deduction.abs
+      . apply Deduction.comm 
+        apply Deduction.weak 
+        . intro d 
+          contradiction 
+        . apply Deduction.var 
+      . apply Deduction.var
+
+-- We can now extract a deduction from a well formed term --
+def ded₁ : (1:base, []) ⊢ (λ(0).($1)) ∶ base->base := p₁.2.2
+#check ded₁ 
+
+-- We now ready to define the reductions --
+inductive Reduction : Term → Term → Type
+| β (n : Nat) (t u : Term) : Reduction (λ(n).t)(u) ([n // u]t)
+
+notation t₁ "~>₁" t₂ => Reduction t₁ t₂ 
+
+-- We verify some basic properties of β - reduction --
+theorem β_PreserveTypes (Γ : Ctx) (t₁ t₂ : Term) (A : Typ) 
+                        : (t₁ ~>₁ t₂) → (Γ ⊢ t₁ ∶ A) → (Γ ⊢ t₂ ∶ A) := by 
+  intro d₁ d₂ 
+  induction d₂ 
+  case var n B => cases d₁
+  case weak t₃ B n₁ Γ₁ B₂ h₁ h₂ ih => 
+    apply Deduction.weak 
+    . assumption 
+    . exact ih d₁ 
+  case comm A₁ Γ₁ n₁ n₂ B₁ B₂ t₄ h₁ ih => 
+    apply Deduction.comm 
+    exact ih d₁  
+  case abs t₄ n₁ Γ₁ B₁ B₂ h₁ h₂ ih₁ ih₂ => cases d₁
+  case app B₁ B₂ n₁ Γ₁ t₃ t₄ h₁ h₂ ih₁ ih₂ => 
+    induction t₃ 
+    case var => contradiction 
+    case abs n₅ t₅  hh₂  => 
+      apply hh₂
+      case h₁ => 
+        cases h₁ 
+        case weak => sorry
+        case comm => sorry
+        case abs => sorry
+      case ih₁ => 
+        intro dd₁ 
+        sorry
+      case d₁ => sorry
+    case app => contradiction  
+    case subst => contradiction
+  case subst n₁ Γ₀ u₁ u₂ B₁ B₂ h₂ h₃ ih₁ ih₂ => cases d₁ 
+
+    
 
 
 
-
+    
+        
