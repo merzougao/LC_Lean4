@@ -76,7 +76,7 @@ inductive Deduction : Ctx → Term → Typ → Type
 --  n₁ , n₂ , Γ  ⊢ t:A 
     ------------------
 --  n₂ , n₁ , Γ ⊢ t:A 
-| comm (Γ : Ctx) (n₁ n₂ : Nat) (A₁ A₂ : Typ) (t : Term) 
+| comm {Γ : Ctx} {n₁ n₂ : Nat} {A₁ A₂ : Typ} {t : Term} 
         : Deduction (n₁:A₁ , n₂:A₂ , Γ) t A 
         → Deduction (n₂:A₂ , n₁:A₁ , Γ) t A
 
@@ -167,6 +167,7 @@ theorem ctxSoundnessVar {n : Nat} {Γ : Ctx} {A : Typ} {t : Term} : (t = $ n ) �
         case a.a.cons h₅ h₆ => cases h₅ ; case cons h₇ h₈ => assumption 
   case abs t₁ n₁ Γ₁ _ _ _ _ _ _  => contradiction
   case app Γ₁ t₁ t₂ _ _ _ _ => contradiction
+  case subst => sorry
  
 -- Prove the soundness of context when a judgment of the form Γ ⊢ t : A is made --
 -- i.e, whenever the judgement is present, the context Γ has to be valid --
@@ -181,6 +182,7 @@ theorem ctxSoundness : (Γ ⊢ t ∶ A) → validCtx Γ := by
   case comm h₃ => exact commValidCtx h₃
   case abs h₄ => exact h₄ 
   case app h₃ => exact h₃ 
+  case subst => sorry
     
 --Any term can be constructed no matter the type if we allow free context --
 example {A B : Typ} : Σ Γ : Ctx , Σ t : Term , (Γ ⊢ t ∶ A->B->A) := by
@@ -230,45 +232,41 @@ def ded₁ : (1:base, []) ⊢ (λ(0).($1)) ∶ base->base := p₁.2.2
 
 -- We now ready to define the reductions --
 inductive Reduction : Term → Term → Type
-| β (n : Nat) (t u : Term) : Reduction (λ(n).t)(u) ([n // u]t)
+| β (n : Nat) (t u : Term) (A B : Typ) : Reduction (λ(n).t)(u) ([n // u]t)
 
 notation t₁ "~>₁" t₂ => Reduction t₁ t₂ 
 
+theorem invAbs : (Γ ⊢ λ(n).t ∶ A->B) → ((n:A, Γ) ⊢ t ∶ B) := by sorry
+
+variable (B C : Typ)
 -- We verify some basic properties of β - reduction --
 theorem β_PreserveTypes (Γ : Ctx) (t₁ t₂ : Term) (A : Typ) 
                         : (t₁ ~>₁ t₂) → (Γ ⊢ t₁ ∶ A) → (Γ ⊢ t₂ ∶ A) := by 
-  intro d₁ d₂ 
-  induction d₂ 
-  case var n B => cases d₁
-  case weak t₃ B n₁ Γ₁ B₂ h₁ h₂ ih => 
-    apply Deduction.weak 
-    . assumption 
-    . exact ih d₁ 
-  case comm A₁ Γ₁ n₁ n₂ B₁ B₂ t₄ h₁ ih => 
-    apply Deduction.comm 
-    exact ih d₁  
-  case abs t₄ n₁ Γ₁ B₁ B₂ h₁ h₂ ih₁ ih₂ => cases d₁
-  case app B₁ B₂ n₁ Γ₁ t₃ t₄ h₁ h₂ ih₁ ih₂ => 
-    induction t₃ 
-    case var => contradiction 
-    case abs n₅ t₅  hh₂  => 
-      apply hh₂
-      case h₁ => 
-        cases h₁ 
-        case weak => sorry
-        case comm => sorry
-        case abs => sorry
-      case ih₁ => 
-        intro dd₁ 
-        sorry
-      case d₁ => sorry
-    case app => contradiction  
-    case subst => contradiction
-  case subst n₁ Γ₀ u₁ u₂ B₁ B₂ h₂ h₃ ih₁ ih₂ => cases d₁ 
-
-    
-
-
-
-    
-        
+    intro d₁ d₂ 
+    induction d₂ 
+    case var => contradiction
+    case weak t A₁ n₁ Γ₁ A₂ h₁ h₂ h₃ => 
+      apply Deduction.weak 
+      . assumption
+      . exact h₃ d₁ 
+    case comm A₁ Γ₁ n₁ n₂ A₂ A₃ t h₁ h₂ => 
+      apply Deduction.comm 
+      exact h₂ d₁ 
+    case abs t n₁ Γ₁ A₁ A₂ h₁ h₂ h₃ h₄ => cases d₁ 
+    case app A₁ A₂ n Γ₁ t u h₁ h₂ h₃ h₄ => 
+      cases d₁ 
+      case β n₁ u₁ B₁ B₂ => 
+        apply Deduction.subst 
+        case A => exact A₁ 
+        case a => 
+          cases h₁ 
+          case weak B₄  n₄  Γ₄ h₅ h₆   => sorry
+          case comm Γ₂ n₃ n₄ B₄ B₅ h₅ => 
+            exact invAbs (Deduction.comm h₅)
+          case abs h₅ h₆ => 
+            apply Deduction.weak 
+            . have : validCtx (n₁:A₁,Γ₁) := ctxSoundness h₅ 
+              cases this 
+              case a.cons => assumption
+            . assumption
+    case subst n Γ₁ t u A₁ A₂ h₁ h₂ h₃ h₄ => sorry
