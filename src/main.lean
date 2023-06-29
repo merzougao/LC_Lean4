@@ -356,10 +356,15 @@ theorem β_PreserveTypes (Γ : Ctx) (t₁ : Term) (A : Typ)
       exact h₂ t₆ d₂ 
     case abs t₅ n₁ Γ₁ A₁ A₂ h₁ h₂ h₃ h₄ =>
       intro t₆ d₁ 
-      sorry 
+      induction t₆ <;> contradiction
     case app A₁ A₂ n₁ Γ₁ t₅ t₆ h₁ h₂ h₃ h₄ =>
       intro t₇ d₁ 
-      sorry 
+      induction t₇ 
+      case var => contradiction 
+      case abs => contradiction
+      case app => contradiction 
+      case subst n₁ t₇ t₈  h₆ h₇ => sorry
     case subst n₁ Γ₁ t₅ u A₂ A₃ h₁ h₂ h₃ h₅ =>
       intro t₆ d₁ 
-      sorry
+      induction t₆ <;> contradiction
+
