@@ -281,7 +281,9 @@ inductive Reduction : Term → Term → Type
 
 notation t₁ "~>₁" t₂ => Reduction t₁ t₂ 
 
-
+theorem eqCtxSymm : (Γ ∼ Γ') → (Γ' ∼ Γ) := by sorry
+theorem th2 : (Γ ∼ Γ') → validCtx Γ → validCtx Γ' := by 
+  sorry
 theorem th1 : (n:A,n₁:A₂,n₂:A₃,Γ₁) ∼ (n:A,n₂:A₃,n₁:A₂,Γ₁) := by 
   sorry
 -- There must be a better way to handle this without going full blown lists --
@@ -290,7 +292,7 @@ theorem invAbs (Γ : Ctx) (t q : Term) (n : Nat) (A B C :Typ) (d₁ : t = λ(n).
   intro d₃ d₄ 
   induction  d₃ 
   case var n D => contradiction 
-  case weak t₁ A₁ n₁ Γ₁ A₂ h₁ h₂ h₃ =>
+  case weak t₁ A₁ n₁ Γ₁ A₂ h₁ _ h₃ =>
     apply Deduction.comm 
     apply Deduction.weak 
     . intro d₅ 
@@ -311,17 +313,15 @@ theorem invAbs (Γ : Ctx) (t q : Term) (n : Nat) (A B C :Typ) (d₁ : t = λ(n).
         . intro d₅ 
           cases d₄ ; case a.a.d₄.a.cons iH₁ iH₂ => apply iH₂ ; apply inCtx.cons ; assumption
         . cases d₄ ; case a.a.d₄.a iH₁ iH₂ => cases iH₁ ; assumption 
-  case comm A₁ Γ₁ n₁ n₂ A₂ A₃ t₃ h₁ h₂ => 
-    have thus : validCtx (n:A,n₁:A₂,n₂:A₃,Γ₁) := by 
-      apply validCtx.cons 
-      . intro d₅ 
-        
-    have : (n:A,n₁:A₂,n₂:A₃,Γ₁) ⊢ q ∶ B := @h₂ d₁ d₂ thus 
+  case comm A₁ Γ₁ n₁ n₂ A₂ A₃ t₃ _ h₂ => 
     have that : (n:A,n₁:A₂,n₂:A₃,Γ₁) ∼ (n:A,n₂:A₃,n₁:A₂,Γ₁) := th1        
+    have thus : validCtx (n:A,n₁:A₂,n₂:A₃,Γ₁) := by 
+      exact th2 (eqCtxSymm that) d₄ 
+    have : (n:A,n₁:A₂,n₂:A₃,Γ₁) ⊢ q ∶ B := @h₂ d₁ d₂ thus 
     exact eqCtxEqDeduction that this
   case app => contradiction
   case subst => contradiction
-  case abs t₂ n₁ Γ₁ B₁ B₂ h₁ h₂ h₃ h₄ =>
+  case abs t₂ n₁ Γ₁ B₁ B₂ h₁ h₂ _ _ =>
     have thus₁ : t₂ = q := by injection d₁; assumption
     have thus₂ : n₁  = n := by injection d₁; assumption
     have that₁ : B₂ = B := by injection d₂; assumption
@@ -338,34 +338,28 @@ theorem invAbs (Γ : Ctx) (t q : Term) (n : Nat) (A B C :Typ) (d₁ : t = λ(n).
 
 variable (B C : Typ)
 -- We verify some basic properties of β - reduction --
-theorem β_PreserveTypes (Γ : Ctx) (t₁ t₂ : Term) (A : Typ) 
-                        : (t₁ ~>₁ t₂) → (Γ ⊢ t₁ ∶ A) → (Γ ⊢ t₂ ∶ A) := by 
-    intro d₁ d₂ 
-    induction d₂ 
-    case var => contradiction
-    case weak t A₁ n₁ Γ₁ A₂ h₁ h₂ h₃ => 
-      apply Deduction.weak 
+theorem β_PreserveTypes (Γ : Ctx) (t₁ : Term) (A : Typ) 
+                        : (Γ ⊢ t₁ ∶ A) → (t₂ : Term) → (t₁ ~>₁ t₂) → (Γ ⊢ t₂ ∶ A) := by 
+    intro d
+    induction d 
+    case var n A₁ => 
+      intro t₂ d₁ 
+      contradiction
+    case weak t₃ A₁ n₁ Γ₁ A₂ h₁ h₂ h₃ =>
+      intro t₄ d₂ 
+      apply Deduction.weak
       . assumption
-      . exact h₃ d₁ 
-    case comm A₁ Γ₁ n₁ n₂ A₂ A₃ t h₁ h₂ => 
+      . exact h₃ t₄ d₂ 
+    case comm A₁ Γ₁ n₁ n₂ A₂ A₃ t₅ h₁ h₂ => 
+      intro t₆ d₂ 
       apply Deduction.comm 
-      exact h₂ d₁ 
-    case abs t n₁ Γ₁ A₁ A₂ h₁ h₂ h₃ h₄ => cases d₁ 
-    case app A₁ A₂ n Γ₁ t u h₁ h₂ h₃ h₄ => 
-      cases d₁ 
-      case β n₁ u₁ B₁ B₂ => 
-        apply Deduction.subst 
-        case A => exact A₁ 
-        case a => 
-          cases h₁ 
-          case weak B₄  n₄  Γ₄ h₅ h₆   => sorry
-          case comm Γ₂ n₃ n₄ B₄ B₅ h₅ => 
-            exact invAbs (n₄:B₅, n₃:B₄, Γ₂) (λ(n₁).u₁) u₁ n₁ A₁ A₂ 
-                          (A₁->A₂) rfl rfl (Deduction.comm h₅)
-          case abs h₅ h₆ => 
-            apply Deduction.weak 
-            . have : validCtx (n₁:A₁,Γ₁) := ctxSoundness h₅ 
-              cases this 
-              case a.cons => assumption
-            . assumption
-    case subst n Γ₁ t u A₁ A₂ h₁ h₂ h₃ h₄ => sorry
+      exact h₂ t₆ d₂ 
+    case abs t₅ n₁ Γ₁ A₁ A₂ h₁ h₂ h₃ h₄ =>
+      intro t₆ d₁ 
+      sorry 
+    case app A₁ A₂ n₁ Γ₁ t₅ t₆ h₁ h₂ h₃ h₄ =>
+      intro t₇ d₁ 
+      sorry 
+    case subst n₁ Γ₁ t₅ u A₂ A₃ h₁ h₂ h₃ h₅ =>
+      intro t₆ d₁ 
+      sorry
