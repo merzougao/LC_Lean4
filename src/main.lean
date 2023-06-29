@@ -49,7 +49,8 @@ inductive ctxSubset : Ctx → Ctx → Type
 | nil : ctxSubset [] Γ 
 | cons : (n ε Γ') → ctxSubset Γ Γ' → ctxSubset (n:A , Γ) Γ' 
 
-notation Γ" ∼ "Γ' => (ctxSubset Γ Γ') × (ctxSubset Γ' Γ)
+notation Γ " ⊆ " Γ' => ctxSubset Γ Γ' 
+notation Γ" ∼ "Γ' => (Γ ⊆ Γ') × (Γ' ⊆ Γ)
 
 inductive Term : Type
 | var : Nat → Term                  -- variable
@@ -115,7 +116,43 @@ notation Γ " ⊢ " t " ∶ " A => Deduction Γ t A
 namespace Deduction
 
 theorem eqCtxEqDeduction {Γ Γ' : Ctx} : (Γ ∼ Γ') → (Γ ⊢ t ∶ A) → (Γ' ⊢ t ∶ A) := by 
-  sorry
+  intro d₁ d₂ 
+  induction d₂ 
+  case var n B => 
+    cases d₁
+    case mk fst snd => 
+      cases snd 
+      case nil => contradiction 
+      case cons n₁ Γ₁ B₁ h₁ h₂ => 
+        have : B = B₁ := by sorry 
+        rw [this]
+        cases h₁ 
+        case init => 
+          induction Γ₁ 
+          case nil => apply Deduction.var
+          case cons n₂ B₂ Γ₂ h₃ => sorry
+        case cons => contradiction 
+  case weak t₁ B₁ n₁ Γ₁ B₂ h₁ h₂ h₃ => 
+    apply h₃ 
+    constructor 
+    . cases d₁.1 
+      case fst.cons => assumption
+    . cases d₁.2 
+      case snd.nil => apply ctxSubset.nil 
+      case snd.cons n₂ Γ₂ A₂ iH iH₁ => sorry
+  case comm A₁ Γ₁ n₂ n₃ B₁ B₂ t₁ h₁ h₂  => 
+    apply h₂ 
+    constructor 
+    case fst => 
+      cases d₁.2 
+      case nil => 
+        apply ctxSubset.cons 
+        sorry
+      case cons n₅ Γ₅ B₅ hh hh₁ => sorry
+    case snd => sorry
+      
+
+
 -- If a weakest context is valid, then a strongest one remains valid --
 theorem weakValidCtx (Γ : Ctx) (n₁ : Nat) (A₁ : Typ) : validCtx (n₁:A₁ , Γ) → validCtx Γ  := by 
   intro d 
@@ -246,42 +283,23 @@ notation t₁ "~>₁" t₂ => Reduction t₁ t₂
 
 
 theorem th1 : (n:A,n₁:A₂,n₂:A₃,Γ₁) ∼ (n:A,n₂:A₃,n₁:A₂,Γ₁) := by 
-      constructor 
-      . apply ctxSubset.cons 
-        . apply inCtx.init
-        . apply ctxSubset.cons 
-          . apply inCtx.cons 
-            apply inCtx.cons 
-            apply inCtx.init 
-          . apply ctxSubset.cons 
-            . apply inCtx.cons 
-              apply inCtx.init
-            . induction Γ₁
-              case fst.a.a.a.nil => apply ctxSubset.nil 
-              case fst.a.a.a.cons n₅ A₅ Γ₅ ih => 
-                apply ctxSubset.cons 
-                . apply inCtx.cons
-                  apply inCtx.cons
-                  apply inCtx.cons
-                  apply inCtx.init
-                . sorry
-            . sorry
+  sorry
 -- There must be a better way to handle this without going full blown lists --
 
 
 
 
-theorem invAbs2 (Γ : Ctx) (t q : Term) (n : Nat) (A B C :Typ) : (t = λ(n).q) → (C = A->B) → (Γ ⊢ t ∶ C) → ((n:A, Γ) ⊢ q ∶ B) := by
-  intro d₁ d₂ d₃  
+theorem invAbs {Γ : Ctx} {t q : Term} {n : Nat} {A B C :Typ} {d₁ : t = λ(n).q} {d₂ : C = A->B} : (Γ ⊢ t ∶ C) → ((n:A, Γ) ⊢ q ∶ B) := by
+  intro d₃  
   induction  d₃ 
   case var n D => contradiction 
   case weak t₁ A₁ n₁ Γ₁ A₂ h₁ h₂ h₃ =>
     apply Deduction.comm 
     apply Deduction.weak 
     . sorry
-    . exact h₃ d₁ d₂
+    . exact @h₃ d₁ d₂
   case comm A₁ Γ₁ n₁ n₂ A₂ A₃ t₃ h₁ h₂ => 
-    have : (n:A,n₁:A₂,n₂:A₃,Γ₁) ⊢ q ∶ B := h₂ d₁ d₂
+    have : (n:A,n₁:A₂,n₂:A₃,Γ₁) ⊢ q ∶ B := @h₂ d₁ d₂
     have that : (n:A,n₁:A₂,n₂:A₃,Γ₁) ∼ (n:A,n₂:A₃,n₁:A₂,Γ₁) := th1        
     exact eqCtxEqDeduction that this
   case app => contradiction
@@ -300,9 +318,6 @@ theorem invAbs2 (Γ : Ctx) (t q : Term) (n : Nat) (A B C :Typ) : (t = λ(n).q) �
       case a.cons => assumption
     . assumption
     
-
-theorem invAbs : (Γ ⊢ λ(n).t ∶ A->B) → ((n:A, Γ) ⊢ t ∶ B) := by
-  sorry
 
 variable (B C : Typ)
 -- We verify some basic properties of β - reduction --
@@ -328,7 +343,8 @@ theorem β_PreserveTypes (Γ : Ctx) (t₁ t₂ : Term) (A : Typ)
           cases h₁ 
           case weak B₄  n₄  Γ₄ h₅ h₆   => sorry
           case comm Γ₂ n₃ n₄ B₄ B₅ h₅ => 
-            exact invAbs (Deduction.comm h₅)
+            exact @invAbs (n₄:B₅, n₃:B₄, Γ₂) (λ(n₁).u₁) u₁ n₁ A₁ A₂ 
+                          (A₁->A₂) rfl rfl (Deduction.comm h₅)
           case abs h₅ h₆ => 
             apply Deduction.weak 
             . have : validCtx (n₁:A₁,Γ₁) := ctxSoundness h₅ 
