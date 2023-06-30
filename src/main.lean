@@ -254,32 +254,20 @@ theorem invApp  : (t = (t₁)(t₂)) → (Γ ⊢ t ∶ B) → (Σ A:Typ, (Γ ⊢
     have this₁ : (A : Typ) × (Γ₁ ⊢ t₁ ∶ A->B₂) × (Γ₁ ⊢ t₂ ∶ A) := h₃ d₁
     cases this₁ 
     case mk C p => 
+      have p₁ : (Γ₁ ⊢ t₁ ∶ C->B₂) := p.1
+      have p₂ : Γ₁ ⊢ t₂ ∶ C := p.2 
       constructor 
       case fst => exact C 
-      case snd => 
-        constructor 
-        case fst =>
-          apply Deduction.weak
-          . assumption 
-          . exact p.1
-        case snd => 
-          apply Deduction.weak
-          . assumption 
-          . exact p.2
+      case snd => constructor <;> apply Deduction.weak <;> assumption
   case comm A₁ Γ₁ n₁ n₂ B₁ B₂ t' _ h₂ => 
     have : (A : Typ) × ((n₁:B₁,n₂:B₂,Γ₁) ⊢ t₁ ∶ A->A₁) × (n₁:B₁,n₂:B₂,Γ₁) ⊢ t₂ ∶ A:= h₂ d₁ 
     cases this 
     case mk C p => 
       constructor 
+      have p₁ : ((n₁:B₁,n₂:B₂,Γ₁) ⊢ t₁ ∶ C->A₁) := p.1
+      have p₂ : (n₁:B₁,n₂:B₂,Γ₁) ⊢ t₂ ∶ C := p.2
       case fst => exact C 
-      case snd => 
-        constructor 
-        case fst => 
-          apply Deduction.comm 
-          exact p.1 
-        case snd =>
-          apply Deduction.comm 
-          exact p.2
+      case snd => constructor  <;> apply Deduction.comm <;> assumption
   case abs => contradiction 
   case app A₁ B₁ _ Γ₁ t' t'' h₁ h₂ h₃ h₄  => 
     constructor 
