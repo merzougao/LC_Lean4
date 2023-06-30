@@ -1,9 +1,6 @@
-
-notation "⊥" => Empty
-
 inductive Typ : Type
-| base : Typ
-| arrow : Typ → Typ → Typ
+  | base : Typ
+  | arrow : Typ → Typ → Typ
 
 notation A"->"B => Typ.arrow A B
 
@@ -23,8 +20,8 @@ example (A B : Typ ) : (A->B) ≠ A := by
     assumption
 
 inductive Ctx : Type
-| nil : Ctx 
-| cons : Nat → Typ → Ctx → Ctx 
+  | nil : Ctx 
+  | cons : Nat → Typ → Ctx → Ctx 
 
 notation "[]" => Ctx.nil
 notation n":"t","Γ => Ctx.cons n t Γ 
@@ -35,28 +32,28 @@ namespace Ctx
 #check 4:base , 3:base , []
 
 inductive inCtx : Nat → Ctx → Type 
-| init (Γ : Ctx) (n : Nat) (A : Typ) : inCtx n (n:A , Γ) 
-| cons (Γ : Ctx) (n n₁ : Nat) (A : Typ) : inCtx n Γ → inCtx n (n₁:A , Γ)
+  | init (Γ : Ctx) (n : Nat) (A : Typ) : inCtx n (n:A , Γ) 
+  | cons (Γ : Ctx) (n n₁ : Nat) (A : Typ) : inCtx n Γ → inCtx n (n₁:A , Γ)
 
 notation n"ε"Γ => inCtx n Γ
 notation n"¬ε"Γ => inCtx n Γ → false
 
 inductive validCtx : Ctx → Type 
-| nil : validCtx []
-| cons (n : Nat) (A : Typ) (Γ : Ctx) : (n ¬ε Γ) → validCtx Γ → validCtx (n:A , Γ) 
+  | nil : validCtx []
+  | cons (n : Nat) (A : Typ) (Γ : Ctx) : (n ¬ε Γ) → validCtx Γ → validCtx (n:A , Γ) 
 
 inductive ctxSubset : Ctx → Ctx → Type 
-| nil : ctxSubset [] Γ 
-| cons : (n ε Γ') → ctxSubset Γ Γ' → ctxSubset (n:A , Γ) Γ' 
+  | nil : ctxSubset [] Γ 
+  | cons : (n ε Γ') → ctxSubset Γ Γ' → ctxSubset (n:A , Γ) Γ' 
 
 notation Γ " ⊆ " Γ' => ctxSubset Γ Γ' 
 notation Γ" ∼ "Γ' => (Γ ⊆ Γ') × (Γ' ⊆ Γ)
 
 inductive Term : Type
-| var : Nat → Term                  -- variable
-| abs : Nat → Term → Term           -- lambda abstraction
-| app : Term → Term → Term          -- application
-| subst : Nat → Term → Term → Term  -- variable substitution
+  | var : Nat → Term                  -- variable
+  | abs : Nat → Term → Term           -- lambda abstraction
+  | app : Term → Term → Term          -- application
+  | subst : Nat → Term → Term → Term  -- variable substitution
 
 notation "$"n  => Term.var n
 notation "λ("n")."t => Term.abs n t
@@ -69,89 +66,51 @@ namespace Term
 #check (λ(4).$5)($7)
 
 inductive Deduction : Ctx → Term → Typ → Type 
--- n ⊢ n  for any variables --
-| var (n : Nat) (A : Typ) : Deduction (n:A , []) ($ n) A
+  -- n ⊢ n  for any variables --
+  | var (n : Nat) (A : Typ) : Deduction (n:A , []) ($ n) A
 
---     Γ ⊢ t:A 
-    -------------
---  (n , Γ) ⊢ t:A 
-| weak  (n : Nat) (Γ : Ctx) (A : Typ) 
-        : (n ¬ε Γ) 
-        → Deduction Γ t A 
-        → Deduction (n:B , Γ) t A 
+  --     Γ ⊢ t:A 
+      -------------
+  --  (n , Γ) ⊢ t:A 
+  | weak  (n : Nat) (Γ : Ctx) (A : Typ) 
+          : (n ¬ε Γ) 
+          → Deduction Γ t A 
+          → Deduction (n:B , Γ) t A 
 
---  n₁ , n₂ , Γ  ⊢ t:A 
-    ------------------
---  n₂ , n₁ , Γ ⊢ t:A 
-| comm {Γ : Ctx} {n₁ n₂ : Nat} {A₁ A₂ : Typ} {t : Term} 
-        : Deduction (n₁:A₁ , n₂:A₂ , Γ) t A 
-        → Deduction (n₂:A₂ , n₁:A₁ , Γ) t A
+  --  n₁ , n₂ , Γ  ⊢ t:A 
+      ------------------
+  --  n₂ , n₁ , Γ ⊢ t:A 
+  | comm {Γ : Ctx} {n₁ n₂ : Nat} {A₁ A₂ : Typ} {t : Term} 
+          : Deduction (n₁:A₁ , n₂:A₂ , Γ) t A 
+          → Deduction (n₂:A₂ , n₁:A₁ , Γ) t A
 
---  n + Γ ⊢ n:A  Γ ⊢ t:B 
-    --------------------
---    Γ ⊢ λ n.t : A->B
-| abs (n: Nat) (Γ : Ctx) (A B : Typ) 
-        : Deduction (n:A , Γ) ($ n) A 
-        → Deduction Γ t B 
-        → Deduction Γ (λ(n).t) (A->B)
+  --  n + Γ ⊢ n:A  Γ ⊢ t:B 
+      --------------------
+  --    Γ ⊢ λ n.t : A->B
+  | abs (n: Nat) (Γ : Ctx) (A B : Typ) 
+          : Deduction (n:A , Γ) ($ n) A 
+          → Deduction Γ t B 
+          → Deduction Γ (λ(n).t) (A->B)
 
---  Γ ⊢ t₁ : A->B     Γ ⊢ t₂ : A
-    ----------------------------
---          Γ ⊢ t₁ t₂ : B
-| app (n : Nat) (Γ : Ctx) (t₁ t₂ : Term)
-        : Deduction Γ t₁ (A->B) 
-        → Deduction Γ t₂ A 
-        → Deduction Γ ((t₁)(t₂)) B
+  --  Γ ⊢ t₁ : A->B     Γ ⊢ t₂ : A
+      ----------------------------
+  --          Γ ⊢ t₁ t₂ : B
+  | app (n : Nat) (Γ : Ctx) (t₁ t₂ : Term)
+          : Deduction Γ t₁ (A->B) 
+          → Deduction Γ t₂ A 
+          → Deduction Γ ((t₁)(t₂)) B
 
---  n, Γ ⊢ t : B      Γ ⊢ u : A
-    ---------------------------
---        Γ ⊢ t[n // u] : B 
-| subst (n : Nat) (Γ : Ctx) (t u : Term) (A B : Typ)
-        : Deduction (n:A,Γ) t B
-        → Deduction Γ u A
-        → Deduction Γ (t[n // u]) B
+  --  n, Γ ⊢ t : B      Γ ⊢ u : A
+      ---------------------------
+  --        Γ ⊢ t[n // u] : B 
+  | subst (n : Nat) (Γ : Ctx) (t u : Term) (A B : Typ)
+          : Deduction (n:A,Γ) t B
+          → Deduction Γ u A
+          → Deduction Γ (t[n // u]) B
 
 -- WARNING, This is "\:" not just ":" --
 notation Γ " ⊢ " t " ∶ " A => Deduction Γ t A 
 namespace Deduction
-
-theorem eqCtxEqDeduction {Γ Γ' : Ctx} : (Γ ∼ Γ') → (Γ ⊢ t ∶ A) → (Γ' ⊢ t ∶ A) := by 
-  intro d₁ d₂ 
-  induction d₂ 
-  case var n B => 
-    cases d₁
-    case mk fst snd => 
-      cases snd 
-      case nil => contradiction 
-      case cons n₁ Γ₁ B₁ h₁ h₂ => 
-        have : B = B₁ := by sorry 
-        rw [this]
-        cases h₁ 
-        case init => 
-          induction Γ₁ 
-          case nil => apply Deduction.var
-          case cons n₂ B₂ Γ₂ h₃ => sorry
-        case cons => contradiction 
-  case weak t₁ B₁ n₁ Γ₁ B₂ h₁ h₂ h₃ => 
-    apply h₃ 
-    constructor 
-    . cases d₁.1 
-      case fst.cons => assumption
-    . cases d₁.2 
-      case snd.nil => apply ctxSubset.nil 
-      case snd.cons n₂ Γ₂ A₂ iH iH₁ => sorry
-  case comm A₁ Γ₁ n₂ n₃ B₁ B₂ t₁ h₁ h₂  => 
-    apply h₂ 
-    constructor 
-    case fst => 
-      cases d₁.2 
-      case nil => 
-        apply ctxSubset.cons 
-        sorry
-      case cons n₅ Γ₅ B₅ hh hh₁ => sorry
-    case snd => sorry
-      
-
 
 -- If a weakest context is valid, then a strongest one remains valid --
 theorem weakValidCtx (Γ : Ctx) (n₁ : Nat) (A₁ : Typ) : validCtx (n₁:A₁ , Γ) → validCtx Γ  := by 
@@ -276,70 +235,66 @@ def ded₁ : (1:base, []) ⊢ (λ(0).($1)) ∶ base->base := p₁.2.2
 #check ded₁ 
 
 -- We now ready to define the reductions --
-inductive Reduction : Term → Term → Type
-| β (n : Nat) (t u : Term) (A B : Typ) : Reduction (λ(n).t)(u) (t[n // u])
+inductive βRed : Term → Term → Type
+  | cons (n : Nat) (t u : Term) (A B : Typ) : βRed (λ(n).t)(u) (t[n // u])
 
-notation t₁ "~>₁" t₂ => Reduction t₁ t₂ 
+notation t₁ " ▸β " t₂ => βRed t₁ t₂ 
 
-theorem eqCtxSymm : (Γ ∼ Γ') → (Γ' ∼ Γ) := by sorry
-theorem th2 : (Γ ∼ Γ') → validCtx Γ → validCtx Γ' := by 
-  sorry
-theorem th1 : (n:A,n₁:A₂,n₂:A₃,Γ₁) ∼ (n:A,n₂:A₃,n₁:A₂,Γ₁) := by 
-  sorry
--- There must be a better way to handle this without going full blown lists --
+inductive βRed₁ : Term → Term → Type 
+  | init : (t ▸β t') →  βRed₁ t t'
+  | abs : (t ▸β t') → βRed₁ (λ(n).t) (λ(n).t')
+  | app₁ : (t ▸β t') → βRed₁ (t)(u) (λ(n).t')
+  | app₂ : (u ▸β u') → βRed₁ (t)(u) (t)(u')
 
-theorem invAbs (Γ : Ctx) (t q : Term) (n : Nat) (A B C :Typ) (d₁ : t = λ(n).q) (d₂ : C = A->B) : (Γ ⊢ t ∶ C) → validCtx (n:A, Γ) → ((n:A, Γ) ⊢ q ∶ B) := by
-  intro d₃ d₄ 
-  induction  d₃ 
-  case var n D => contradiction 
-  case weak t₁ A₁ n₁ Γ₁ A₂ h₁ _ h₃ =>
-    apply Deduction.comm 
-    apply Deduction.weak 
-    . intro d₅ 
-      cases d₄ 
-      case a.a.cons iH₁ iH₂ => 
-        apply iH₂ 
-        cases d₅ 
-        case init => apply inCtx.init 
-        case cons iH₃ => 
-          cases iH₁ 
-          case cons iH₄ =>
-            have : false = true := iH₄ iH₃ 
-            contradiction 
-    . apply h₃ 
-      . exact d₁ 
-      . exact d₂ 
-      . apply validCtx.cons 
-        . intro d₅ 
-          cases d₄ ; case a.a.d₄.a.cons iH₁ iH₂ => apply iH₂ ; apply inCtx.cons ; assumption
-        . cases d₄ ; case a.a.d₄.a iH₁ iH₂ => cases iH₁ ; assumption 
-  case comm A₁ Γ₁ n₁ n₂ A₂ A₃ t₃ _ h₂ => 
-    have that : (n:A,n₁:A₂,n₂:A₃,Γ₁) ∼ (n:A,n₂:A₃,n₁:A₂,Γ₁) := th1        
-    have thus : validCtx (n:A,n₁:A₂,n₂:A₃,Γ₁) := by 
-      exact th2 (eqCtxSymm that) d₄ 
-    have : (n:A,n₁:A₂,n₂:A₃,Γ₁) ⊢ q ∶ B := @h₂ d₁ d₂ thus 
-    exact eqCtxEqDeduction that this
-  case app => contradiction
-  case subst => contradiction
-  case abs t₂ n₁ Γ₁ B₁ B₂ h₁ h₂ _ _ =>
-    have thus₁ : t₂ = q := by injection d₁; assumption
-    have thus₂ : n₁  = n := by injection d₁; assumption
-    have that₁ : B₂ = B := by injection d₂; assumption
-    have that₂  : B₁ = A := by injection d₂; assumption
-    rw [← thus₁]
-    rw [← that₁]
-    rw [← thus₂]
-    rw [← that₂]
-    apply Deduction.weak 
-    . cases (ctxSoundness h₁)
-      case a.cons => assumption
-    . assumption
-    
 
-variable (B C : Typ)
+theorem invApp : (t = (t₁)(t₂)) → (Γ ⊢ t ∶ B) → (Σ A:Typ, (Γ ⊢ t₁ ∶ A -> B)) := by 
+  intro d₁ d₂ 
+  induction d₂ 
+  case var => contradiction 
+  case weak t' B₁ n Γ₁ B₂ h₁ _ h₃ => 
+    have : (A : Typ) × Γ₁ ⊢ t₁ ∶ A->B₂ := h₃ d₁ 
+    cases this 
+    case mk C p => 
+      constructor 
+      case fst => exact C 
+      case snd => 
+        apply Deduction.weak 
+        . assumption 
+        . assumption
+  case comm A₁ Γ₁ n₁ n₂ B₁ B₂ t' _ h₂ => 
+    have : (A : Typ) × (n₁:B₁,n₂:B₂,Γ₁) ⊢ t₁ ∶ A->A₁ := h₂ d₁ 
+    cases this 
+    case mk C p => 
+      constructor 
+      case fst => exact C 
+      case snd => 
+        apply Deduction.comm 
+        assumption
+  case abs => contradiction 
+  case app A₁ B₁ _ Γ₁ t' t'' h₁ h₂ h₃ h₄  => 
+    constructor 
+    case fst => exact A₁ 
+    case snd => 
+      have : t' = t₁ := by injection d₁ with hh₁ hh₂; assumption 
+      rw [this] at h₁ 
+      assumption
+  case subst => contradiction 
+  
+variable (B : Typ)
 -- We verify some basic properties of β - reduction --
+theorem β_PreserveTypes2 (Γ : Ctx) (t₁ t₂ : Term) (A : Typ) 
+                        : (t₁ ▸β t₂) → (Γ ⊢ t₁ ∶ A) →  (Γ ⊢ t₂ ∶ A) := by 
+
+  intro d₁ d₂ 
+  induction d₁ 
+  case cons n t' u A₁ A₂ => 
+    apply Deduction.subst 
+    case A => exact B
+    case a => sorry
+    case a => sorry
+
 theorem β_PreserveTypes (Γ : Ctx) (t₁ : Term) (A : Typ) 
-                        : (Γ ⊢ t₁ ∶ A) → (t₂ : Term) → (t₁ ~>₁ t₂) → (Γ ⊢ t₂ ∶ A) := by 
+                        : (Γ ⊢ t₁ ∶ A) → (t₂ : Term) → (t₁ ▸β t₂) → (Γ ⊢ t₂ ∶ A) := by 
     intro d
     induction d 
     case var n A₁ => 
@@ -363,7 +318,12 @@ theorem β_PreserveTypes (Γ : Ctx) (t₁ : Term) (A : Typ)
       case var => contradiction 
       case abs => contradiction
       case app => contradiction 
-      case subst n₁ t₇ t₈  h₆ h₇ => sorry
+      case subst n₁ t₇ t₈  h₆ h₇ => 
+        induction t₈ 
+        case var n₂ n₃ => sorry
+        case abs n₂ n₃ t₈ iH => sorry
+        case app n₂ t₈ t₉ iH₁ iH₂ => sorry
+        case subst n₂ n₃ t₈ t₉ iH iH₂ => sorry
     case subst n₁ Γ₁ t₅ u A₂ A₃ h₁ h₂ h₃ h₅ =>
       intro t₆ d₁ 
       induction t₆ <;> contradiction
