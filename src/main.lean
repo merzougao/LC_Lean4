@@ -246,38 +246,50 @@ inductive βRed₁ : Term → Term → Type
   | app₁ : (t ▸β t') → βRed₁ (t)(u) (λ(n).t')
   | app₂ : (u ▸β u') → βRed₁ (t)(u) (t)(u')
 
-
-theorem invApp : (t = (t₁)(t₂)) → (Γ ⊢ t ∶ B) → (Σ A:Typ, (Γ ⊢ t₁ ∶ A -> B)) := by 
-  intro d₁ d₂ 
+theorem invApp  : (t = (t₁)(t₂)) → (Γ ⊢ t ∶ B) → (Σ A:Typ, (Γ ⊢ t₁ ∶ A -> B) × (Γ ⊢ t₂ ∶ A)) := by 
+  intro d₁ d₂
   induction d₂ 
   case var => contradiction 
   case weak t' B₁ n Γ₁ B₂ h₁ _ h₃ => 
-    have : (A : Typ) × Γ₁ ⊢ t₁ ∶ A->B₂ := h₃ d₁ 
-    cases this 
+    have this₁ : (A : Typ) × (Γ₁ ⊢ t₁ ∶ A->B₂) × (Γ₁ ⊢ t₂ ∶ A) := h₃ d₁
+    cases this₁ 
     case mk C p => 
       constructor 
       case fst => exact C 
       case snd => 
-        apply Deduction.weak 
-        . assumption 
-        . assumption
+        constructor 
+        case fst =>
+          apply Deduction.weak
+          . assumption 
+          . exact p.1
+        case snd => 
+          apply Deduction.weak
+          . assumption 
+          . exact p.2
   case comm A₁ Γ₁ n₁ n₂ B₁ B₂ t' _ h₂ => 
-    have : (A : Typ) × (n₁:B₁,n₂:B₂,Γ₁) ⊢ t₁ ∶ A->A₁ := h₂ d₁ 
+    have : (A : Typ) × ((n₁:B₁,n₂:B₂,Γ₁) ⊢ t₁ ∶ A->A₁) × (n₁:B₁,n₂:B₂,Γ₁) ⊢ t₂ ∶ A:= h₂ d₁ 
     cases this 
     case mk C p => 
       constructor 
       case fst => exact C 
       case snd => 
-        apply Deduction.comm 
-        assumption
+        constructor 
+        case fst => 
+          apply Deduction.comm 
+          exact p.1 
+        case snd =>
+          apply Deduction.comm 
+          exact p.2
   case abs => contradiction 
   case app A₁ B₁ _ Γ₁ t' t'' h₁ h₂ h₃ h₄  => 
     constructor 
     case fst => exact A₁ 
     case snd => 
-      have : t' = t₁ := by injection d₁ with hh₁ hh₂; assumption 
-      rw [this] at h₁ 
-      assumption
+      have this₁ : t' = t₁ := by injection d₁ with hh₁ hh₂; assumption 
+      have this₂ : t'' = t₂ := by injection d₁ with hh₁ hh₂; assumption 
+      rw [this₁] at h₁ 
+      rw [this₂] at h₂ 
+      constructor <;> assumption
   case subst => contradiction 
   
 variable (B : Typ)
