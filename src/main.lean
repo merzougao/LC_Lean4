@@ -236,7 +236,10 @@ def ded₁ : (1:base, []) ⊢ (λ(0).($1)) ∶ base->base := p₁.2.2
 
 -- We now ready to define the reductions --
 inductive βRed : Term → Term → Type
-  | cons (n : Nat) (t u : Term) (A B : Typ) : βRed (λ(n).t)(u) (t[n // u])
+  | cons (n : Nat) (t u : Term) 
+      : (Γ ⊢ t ∶ B) 
+      → (Γ ⊢ u ∶ A)
+      → βRed (λ(n).t)(u) (t[n // u])
 
 notation t₁ " ▸β " t₂ => βRed t₁ t₂ 
 
@@ -246,7 +249,7 @@ inductive βRed₁ : Term → Term → Type
   | app₁ : (t ▸β t') → βRed₁ (t)(u) (λ(n).t')
   | app₂ : (u ▸β u') → βRed₁ (t)(u) (t)(u')
 
-theorem invApp  : (t = (t₁)(t₂)) → (Γ ⊢ t ∶ B) → (Σ A:Typ, (Γ ⊢ t₁ ∶ A -> B) × (Γ ⊢ t₂ ∶ A)) := by 
+theorem invApp : (t = (t₁)(t₂)) → (Γ ⊢ t ∶ B) → (Σ A:Typ, (Γ ⊢ t₁ ∶ A -> B) × (Γ ⊢ t₂ ∶ A)) := by 
   intro d₁ d₂
   induction d₂ 
   case var => contradiction 
@@ -287,12 +290,17 @@ theorem β_PreserveTypes2 (Γ : Ctx) (t₁ t₂ : Term) (A : Typ)
 
   intro d₁ d₂ 
   induction d₁ 
-  case cons n t' u A₁ A₂ => 
-    apply Deduction.subst 
-    case A => exact B
-    case a => sorry
-    case a => sorry
+  case cons Γ₁ B₁ B₂ n t u h₂ h₃    => 
+    have : (Σ D:Typ, (Γ ⊢ λ(n).t ∶ D -> A) × (Γ ⊢ u ∶ D)) := invApp rfl d₂ 
+    cases this 
+    case mk D p => 
+      apply Deduction.subst 
+      case A => exact D 
+      case a => sorry
+      case a => exact p.2
 
+
+    
 theorem β_PreserveTypes (Γ : Ctx) (t₁ : Term) (A : Typ) 
                         : (Γ ⊢ t₁ ∶ A) → (t₂ : Term) → (t₁ ▸β t₂) → (Γ ⊢ t₂ ∶ A) := by 
     intro d
