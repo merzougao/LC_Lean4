@@ -4,26 +4,35 @@ inductive Connective : Type
   | and : Connective
   | or : Connective
 
-inductive Formula0 : Type
-  | var : Formula0
-  | cons : Connective → Formula0 → Formula0 → Formula0
+inductive Formula : Type
+  | var : Nat → Formula
+  | cons : Connective → Formula → Formula → Formula
+
+notation "$" n => Formula.var n
+
+def A : Formula := $ 0
+def B : Formula := $ 1
 
 
-inductive Ctx0 : Type
-  | nil : Ctx0
-  | cons : Formula0 → Ctx0 → Ctx0
+inductive Ctx : Type
+  | nil : Ctx
+  | cons : Formula → Ctx → Ctx
 
-notation f₀ c f₁ => Formula0.cons c f₀ f₁
-notation f","Γ => Ctx0.cons f Γ
+notation "∅" => Ctx.nil
+notation f₀ c f₁ => Formula.cons c f₀ f₁
+notation f","Γ => Ctx.cons f Γ
 
-inductive AtomicSequent : Ctx0 → Formula0 → Type
-  | id : AtomicSequent (Formula0.var,nil) Formula0.var
-
+inductive AtomicSequent : Type
+  | id : Nat → AtomicSequent
+  
 notation Γ "⊩" F => AtomicSequent Γ F
+#check (A , (B, ∅)) ⊩ A
+def Λ : AtomicSequent Γ f := (A , (B, ∅)) ⊩ A
 
 inductive Sequent : Type
   | atomic : (AtomicSequent Γ f) → Sequent
   | cons :  Sequent → (AtomicSequent Γ f) → Sequent
+
 
 
 
