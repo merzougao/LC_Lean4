@@ -1,30 +1,30 @@
-import Init.Data.Nat.Basic 
+import Init.Data.Nat.Basic
 
 -- We start by defining our basic type base and the arrow type --
 inductive Typ : Type
   | base : Typ
   | arrow : Typ → Typ → Typ
 
-notation t₁ "->" t₂ => Typ.arrow t₁ t₂ 
+notation t₁ "->" t₂ => Typ.arrow t₁ t₂
 
 -- Print function for convenience --
-def printTyp (t : Typ) : String := by 
-  cases t 
-  case base => exact " base " 
-  case arrow t₁ t₂ => exact printTyp t₁ ++ "→" ++ printTyp t₂ 
+def printTyp (t : Typ) : String := by
+  cases t
+  case base => exact " base "
+  case arrow t₁ t₂ => exact printTyp t₁ ++ "→" ++ printTyp t₂
 
 namespace Typ
 
 -- We define a context, which is just a list of variable and types --
 inductive Ctx : Type
   | nil   : Ctx
-  | cons  (n : Nat)  (t : Typ) (c : Ctx ) : Ctx 
+  | cons  (n : Nat)  (t : Typ) (c : Ctx ) : Ctx
 
 notation "[]" => Ctx.nil
 notation n ",," t " ⟶ " c => Ctx.cons n t c
 
 -- A type that is inhabited whenever a variable is not present in a context --
-inductive notInCtx (n : Nat) (t : Typ) : Ctx → Type 
+inductive notInCtx (n : Nat) (t : Typ) : Ctx → Type
   | nil : notInCtx n t []
   | cons (n₁ : Nat) (t₁ : Typ) (p₁ : Ctx) (p : n ≠ n₁) : notInCtx n t (n₁,,t₁ ⟶ p₁)
 
@@ -40,24 +40,24 @@ def ctxLength (c : Ctx) : Nat := by
   case nil => exact 0
   case cons n t c₁ => exact ctxLength c₁ + 1
 
-inductive mergeCtx : Ctx → Ctx → Ctx → Type 
+inductive mergeCtx : Ctx → Ctx → Ctx → Type
   | nil_nil : mergeCtx [] [] []
   | nill (c : Ctx) : mergeCtx [] c c
   | nilr (c : Ctx) : mergeCtx c [] c
-  | consl  (c₁ c₂ c₃ : Ctx) 
-          (n  : Nat) 
+  | consl  (c₁ c₂ c₃ : Ctx)
+          (n  : Nat)
           (t : Typ) :
           (mergeCtx c₁ c₂ c₃)
-          → (notInCtx n t c₂) 
+          → (notInCtx n t c₂)
           → mergeCtx (n,,t  ⟶ c₁) c₂ (n ,,t  ⟶ c₃ )
-  | consr  (c₁ c₂ c₃ : Ctx) 
-          (n  : Nat) 
+  | consr  (c₁ c₂ c₃ : Ctx)
+          (n  : Nat)
           (t : Typ) :
           (mergeCtx c₁ c₂ c₃)
-          → (notInCtx n t c₁) 
+          → (notInCtx n t c₁)
           → mergeCtx c₁ (n,,t  ⟶ c₂ ) (n ,,t ⟶ c₃ )
 
-    
+
 def printCtx (c : Ctx) : String := by
   cases c
   case nil => exact ""
@@ -66,15 +66,15 @@ def printCtx (c : Ctx) : String := by
 -- Let's define a context and prove that it is a valid one --
 -- Note that if we define an invalid context, there will be no proof of it being valid --
 def ctx₁ : Ctx := cons 2 base (cons 3 (arrow base base) nil)
-#check ctx₁ 
-#eval printCtx ctx₁ 
+#check ctx₁
+#eval printCtx ctx₁
 
 -- A Proof that the previous context is a valid context --
 example : validCtx ctx₁ := by
-  apply validCtx.cons 
-  apply notInCtx.cons 
+  apply validCtx.cons
+  apply notInCtx.cons
   trivial
-  
+
 inductive Term : Type
   | var : Nat → Typ → Term
   | abs : Nat → Typ →  Term → Term
@@ -87,7 +87,7 @@ notation f"@"t => Term.app f t
 def printTerm (t: Term) : String := by
   cases t
   case var n t₁ => exact "x"++(toString n)
-  case abs  n ty t₁ => exact "λ (x" ++ toString n ++ ":" ++ (printTyp ty) ++")."++ printTerm t₁ 
+  case abs  n ty t₁ => exact "λ (x" ++ toString n ++ ":" ++ (printTyp ty) ++")."++ printTerm t₁
   case app t₁ t₂ => exact "("++ printTerm t₁ ++ ")("++ printTerm t₂ ++ ")"
 
 namespace Term
@@ -107,29 +107,29 @@ def t₁ : Term := Term.abs 0 base (Term.var 0 base)
 #eval printTerm t
 #eval printTerm u
 #eval printTerm (t [0//u])
-#eval printTerm t₁ 
+#eval printTerm t₁
 #eval printTerm (t₁ [0//u])
 
 inductive Deduction : Ctx →  Term →  Typ →  Type
   | var (n : Nat) (t : Typ) : Deduction (n,,t ⟶ []) ($n:t) t
-  | weak (n : Nat) (A B : Typ) (t : Term) (Γ : Ctx) : Deduction (n,,A ⟶ Γ) t B 
+  | weak (n : Nat) (A B : Typ) (t : Term) (Γ : Ctx) : Deduction (n,,A ⟶ Γ) t B
   | comm (Γ c₁ c₂ c : Ctx) (bn₁ bn₂ A : Typ) :
-        mergeCtx Γ (n₁,,Bn₁ ⟶ n₂,,Bn₂ ⟶ c) c₁ 
+        mergeCtx Γ (n₁,,Bn₁ ⟶ n₂,,Bn₂ ⟶ c) c₁
       → Deduction c₁ t A
       → mergeCtx Γ (n₂,,Bn₂ ⟶ n₁,,Bn₁ ⟶ c) c₂
       → Deduction c₂ t A
-  | abs (c : Ctx) (t : Term) (ty xt : Typ) (n : Nat) : 
-        Deduction (n,,xt ⟶ c) t ty 
+  | abs (c : Ctx) (t : Term) (ty xt : Typ) (n : Nat) :
+        Deduction (n,,xt ⟶ c) t ty
       → Deduction c (λ (xn:xt).t) (xt -> ty)
-  | app (c₁ c₂ c₃ : Ctx) ( t₁ t₂ : Term) (A B : Typ) : 
-        Deduction c₁ t₁ (A -> B) 
-      → Deduction c₂ t₂ A 
+  | app (c₁ c₂ c₃ : Ctx) ( t₁ t₂ : Term) (A B : Typ) :
+        Deduction c₁ t₁ (A -> B)
+      → Deduction c₂ t₂ A
       → mergeCtx c₁ c₂ c₃
       → Deduction c₃ (t₁ @ t₂) B
 --  | subst (c₁ c₂ c₃ : Ctx) (n₁ : Nat) (ty₁ ty : Typ) (t t₂ : Term) :
---        Deduction (n₁,,ty₁ ⟶ c₁) t ty 
+--        Deduction (n₁,,ty₁ ⟶ c₁) t ty
 --      → Deduction c₂ t₂ ty₁
---      → mergeCtx c₁ c₂ c₃  
+--      → mergeCtx c₁ c₂ c₃
 --      → Deduction c₃ (t [n₁ // t₂]) ty
 --
 notation Γ " ⊢ " t " : " ty => Deduction Γ t ty
@@ -140,24 +140,24 @@ inductive red : Term → Term → Type
   | β (n: Nat) (ty : Typ) (t u : Term) : red ((λ (xn:ty).t)@u) (t[n // u])
 
 theorem arrowNotEq (A B : Typ) : (A -> B) ≠ A := by
-  intros h 
+  intros h
   induction B
   case base => trivial
   case arrow a b c D E h₁ h₂  =>
-    
+
 
 theorem typeApp {Γ : Ctx} {t₁ t₂ : Term} {A B : Typ} : (Γ ⊢ t₁ : A -> B) → (Γ ⊢ t₁ @ t₂ : B) → (Γ ⊢ t₂ : A) := by
-  intros d₁ d₂ 
-  cases d₁ 
-  case var n => 
+  intros d₁ d₂
+  cases d₁
+  case var n =>
     induction t₂
-    case var n₁ C =>  
+    case var n₁ C =>
       have : C = A := by sorry
       rw [this]
       have : n = n₁ := by sorry
       rw [this]
       have : (A -> B) = A := by sorry
-      
+
 
 
     case abs h p q => sorry
@@ -169,18 +169,18 @@ theorem typeApp {Γ : Ctx} {t₁ t₂ : Term} {A B : Typ} : (Γ ⊢ t₁ : A -> 
   case app => sorry
 
 
---theorem βRedPreservesType (Γ : Ctx) (A : Typ) (t₁ t₂ : Term) : red t₁ t₂ → (Γ ⊢ t₁ : A) → (Γ ⊢ t₂ : A ):= by 
---  intros r d₁ 
---  induction t₁ 
+--theorem βRedPreservesType (Γ : Ctx) (A : Typ) (t₁ t₂ : Term) : red t₁ t₂ → (Γ ⊢ t₁ : A) → (Γ ⊢ t₂ : A ):= by
+--  intros r d₁
+--  induction t₁
 --  case var n An => contradiction
 --  case abs n An t₃ h => contradiction
---  case app t₃ t₄ h p => 
---    induction t₃ 
+--  case app t₃ t₄ h p =>
+--    induction t₃
 --    case var => contradiction
---    case abs n₁ an₁ t₅ h₁ => 
---      apply p 
---      . 
---      
+--    case abs n₁ an₁ t₅ h₁ =>
+--      apply p
+--      .
+--
 --    case app => contradiction
 end Term
 end Ctx
